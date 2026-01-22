@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log File Analyzer - IT Operations</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Log File Analyzer</h1>
+            <p class="subtitle">Enterprise IT Operations Automation Tool</p>
+        </header>
+
+        <main>
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="messages">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <!-- Upload Form -->
+            <div class="upload-section">
+                <form action="{{ url_for('analyze') }}" method="POST" enctype="multipart/form-data" class="upload-form">
+                    <div class="form-group">
+                        <label for="log_file">Select Log File (.txt):</label>
+                        <input type="file" id="log_file" name="log_file" accept=".txt" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Analyze Logs</button>
+                </form>
+            </div>
+
+            <!-- Results Section -->
+            {% if analytics %}
+            <div class="results-section">
+                <h2>Analysis Results</h2>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Requests</div>
+                        <div class="stat-value">{{ analytics.total_requests | format_number }}</div>
+                    </div>
+                    <div class="stat-card error-card">
+                        <div class="stat-label">Total Errors (4xx/5xx)</div>
+                        <div class="stat-value">{{ analytics.total_errors | format_number }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Valid Entries Parsed</div>
+                        <div class="stat-value">{{ total_parsed | format_number }}</div>
+                    </div>
+                </div>
+
+                <!-- Error Code Frequency -->
+                {% if analytics.error_codes %}
+                <div class="section">
+                    <h3>Error Code Frequency</h3>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>HTTP Status Code</th>
+                                <th>Occurrences</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for code in analytics.error_codes.keys() | sort %}
+                            <tr>
+                                <td>{{ code }}</td>
+                                <td>{{ analytics.error_codes[code] | format_number }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+
+                <!-- Top 5 IP Addresses -->
+                {% if analytics.top_error_ips %}
+                <div class="section">
+                    <h3>Top 5 IP Addresses by Error Count</h3>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>IP Address</th>
+                                <th>Error Count</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in analytics.top_error_ips %}
+                            <tr>
+                                <td>{{ loop.index }}</td>
+                                <td>{{ item.ip }}</td>
+                                <td>{{ item.error_count | format_number }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+
+                <!-- Error Distribution Chart -->
+                {% if chart_filename %}
+                <div class="section">
+                    <h3>Error Distribution Chart</h3>
+                    <div class="chart-container">
+                        <img src="{{ url_for('chart', filename=chart_filename) }}" alt="Error Distribution Chart" class="chart-image">
+                    </div>
+                </div>
+                {% endif %}
+
+            </div>
+            {% endif %}
+        </main>
+    </div>
+
+    <script>
+        // Add number formatting helper
+        function formatNumber(num) {
+            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        }
+        
+        // Format all stat values on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const statValues = document.querySelectorAll('.stat-value');
+            statValues.forEach(function(element) {
+                const text = element.textContent.trim();
+                const num = parseInt(text.replace(/,/g, ''));
+                if (!isNaN(num)) {
+                    element.textContent = formatNumber(num);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
